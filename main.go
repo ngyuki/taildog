@@ -57,6 +57,7 @@ type config struct {
 	lastInfo    *logsInfo
 	apiKey      string
 	appKey      string
+	site        string
 }
 
 type logsInfo struct {
@@ -176,7 +177,7 @@ func getLogs(cfg *config) (*logsInfo, error) {
 	}
 
 	url := fmt.Sprintf(
-		"https://api.datadoghq.com/api/v1/logs-queries/list?api_key=%s&application_key=%s", cfg.apiKey, cfg.appKey)
+		"https://api.%s/api/v1/logs-queries/list?api_key=%s&application_key=%s", cfg.site, cfg.apiKey, cfg.appKey)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBodyJson))
 	if err != nil {
 		return nil, err
@@ -233,9 +234,12 @@ func newMessage(cfg *config, l logInfo) (*message, error) {
 	}, nil
 }
 
-func getEnv(key string) string {
+func getEnv(key string, defval string) string {
 	if v, ok := os.LookupEnv(key); ok {
 		return v
+	}
+	if defval != "" {
+		return defval
 	}
 	log.Fatalf("Env %s must be sed but not found.", key)
 	return ""
@@ -250,8 +254,9 @@ func parseTime(str string) (time.Time, error) {
 }
 
 func newConfig() (*config, error) {
-	apiKey := getEnv("DD_API_KEY")
-	appKey := getEnv("DD_APP_KEY")
+	apiKey := getEnv("DD_API_KEY", "")
+	appKey := getEnv("DD_APP_KEY", "")
+	site := getEnv("DD_SITE", "datadoghq.com")
 
 	funcs := map[string]interface{}{
 		"json": func(in interface{}) (string, error) {
@@ -309,6 +314,7 @@ func newConfig() (*config, error) {
 		lastInfo:    &logsInfo{},
 		apiKey:      apiKey,
 		appKey:      appKey,
+		site:        site,
 	}, nil
 }
 
